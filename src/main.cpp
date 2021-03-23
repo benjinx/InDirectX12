@@ -122,6 +122,8 @@ private:
 
     ComPtr<ID3D12Resource> _dxRenderTargets[_bufferCount];
 
+    ComPtr<ID3D12Resource> _dxVertexBuffer;
+
 public:
     App() = default;
 
@@ -709,8 +711,6 @@ public:
             { { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f, 1.0f } }
         };
 
-        ComPtr<ID3D12Resource> dxVertexBuffer;
-
         const UINT vertexBufferSize = sizeof(vertexBufferData);
 
         D3D12_HEAP_PROPERTIES vertexHeapProperties = {
@@ -743,7 +743,7 @@ public:
             &vertexBufferResourceDesc,
             D3D12_RESOURCE_STATE_GENERIC_READ,
             nullptr,
-            IID_PPV_ARGS(&dxVertexBuffer)
+            IID_PPV_ARGS(&_dxVertexBuffer)
         );
         if (FAILED(hResult)) {
             throw fmt::windows_error(hResult, "CreateCommittedResource() Failed");
@@ -758,15 +758,15 @@ public:
             .End = 0,
         };
 
-        hResult = dxVertexBuffer->Map(0, &vertexReadRange, reinterpret_cast<void**>(&pVertexDataBegin));
+        hResult = _dxVertexBuffer->Map(0, &vertexReadRange, reinterpret_cast<void**>(&pVertexDataBegin));
         if (FAILED(hResult)) {
             throw fmt::windows_error(hResult, "Map() Failed");
         }
 
         memcpy(pVertexDataBegin, vertexBufferData, sizeof(vertexBufferData));
-        dxVertexBuffer->Unmap(0, nullptr);
+        _dxVertexBuffer->Unmap(0, nullptr);
 
-        _dxVertexBufferView.BufferLocation = dxVertexBuffer->GetGPUVirtualAddress();
+        _dxVertexBufferView.BufferLocation = _dxVertexBuffer->GetGPUVirtualAddress();
         _dxVertexBufferView.StrideInBytes = sizeof(Vertex);
         _dxVertexBufferView.SizeInBytes = vertexBufferSize;
     }
