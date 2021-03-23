@@ -1,2 +1,4 @@
 build/
 .vscode
+.vs/
+dx12.cap
