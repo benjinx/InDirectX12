@@ -9,8 +9,6 @@ FIND_PROGRAM(
     NAMES dxc
 )
 
-#MESSAGE(STATUS ${dxc_PROGRAM})
-
 FILE(
     GLOB_RECURSE
     _shaders_in

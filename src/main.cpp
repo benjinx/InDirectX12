@@ -64,24 +64,22 @@ private:
     // Window
     glm::ivec2 _windowSize = { 800, 600 };
 
-    HWND _window;
+    HWND _window = {};
 
     // Misc
     unsigned int _frameIndex = 0;
 
-    HANDLE _fenceEvent;
+    HANDLE _fenceEvent = nullptr;
 
-    uint64_t _fenceValue;
+    uint64_t _fenceValue = 0;
 
     static const unsigned _bufferCount = 2;
 
     unsigned int _rtvDescriptorHeapSize = 0;
 
-    std::vector<uint8_t> _vert;
+    std::vector<uint8_t> _vert = {};
 
-    std::vector<uint8_t> _pixel;
-
-    uint8_t* _mappedUniformBuffer;
+    std::vector<uint8_t> _pixel = {};
 
     // DirectX
     ComPtr<ID3D12Debug1> _dxDebug;
@@ -104,11 +102,11 @@ private:
 
     ComPtr<ID3D12RootSignature> _dxRootSignature;
 
-    D3D12_VERTEX_BUFFER_VIEW _dxVertexBufferView;
+    D3D12_VERTEX_BUFFER_VIEW _dxVertexBufferView = {};
 
-    D3D12_INDEX_BUFFER_VIEW _dxIndexBufferView;
+    //D3D12_INDEX_BUFFER_VIEW _dxIndexBufferView = {};
 
-    ComPtr<ID3D12Resource> _dxUniformBuffer;
+    //ComPtr<ID3D12Resource> _dxUniformBuffer;
 
     ComPtr<ID3D12DescriptorHeap> _dxUniformBufferHeap;
 
@@ -116,11 +114,11 @@ private:
 
     ComPtr<ID3D12GraphicsCommandList> _dxCommandList;
 
-    D3D12_VIEWPORT _dxViewport;
+    D3D12_VIEWPORT _dxViewport = {};
 
-    D3D12_RECT _dxSurfaceSize;
+    D3D12_RECT _dxSurfaceSize = {};
 
-    ComPtr<ID3D12Resource> _dxRenderTargets[_bufferCount];
+    ComPtr<ID3D12Resource> _dxRenderTargets[_bufferCount] = {};
 
     ComPtr<ID3D12Resource> _dxVertexBuffer;
 
@@ -229,7 +227,6 @@ public:
             instance,
             this
         );
-
         if (!_window) {
             throw fmt::windows_error(GetLastError(), "Window was not created successfully");
         }
@@ -329,9 +326,9 @@ public:
                     ComPtr<ID3D12InfoQueue> pInfoQueue;
                     if (SUCCEEDED(_dxDevice.As(&pInfoQueue)))
                     {
-                        pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
-                        pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
-                        pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, TRUE);
+                        //pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
+                        //pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
+                        //pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, TRUE);
 
                         // Suppress whole categories of messages
                         //D3D12_MESSAGE_CATEGORY Categories[] = {};
@@ -358,7 +355,6 @@ public:
                         NewFilter.DenyList.pIDList = DenyIds;
 
                         hResult = pInfoQueue->PushStorageFilter(&NewFilter);
-
                         if (FAILED(hResult)) {
                             throw fmt::windows_error(hResult, "PushStorageFilter() Failed");
                         }
@@ -377,14 +373,6 @@ public:
         if (!_dxDevice) {
             throw fmt::format("Device was not created successfully");
         }
-
-        ComPtr<ID3D12DebugDevice> dxDebugDevice;
-        // NOTE: This is for debugging
-        hResult = _dxDevice->QueryInterface(IID_PPV_ARGS(&dxDebugDevice));
-        if (FAILED(hResult)) {
-            throw fmt::windows_error(hResult, "QueryInterface() Failed");
-        }
-        //dxDebugDevice->ReportLiveDeviceObjects(D3D12_RLDO_SUMMARY | D3D12_RLDO_DETAIL | D3D12_RLDO_IGNORE_INTERNAL);
     }
 
     void InitCommandQueue()
@@ -605,71 +593,64 @@ public:
             { "COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
         };
 
-        D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
-        psoDesc.InputLayout = { inputElementDescs, _countof(inputElementDescs) };
-        psoDesc.pRootSignature = _dxRootSignature.Get();
-
         D3D12_SHADER_BYTECODE vsByteCode = {
             .pShaderBytecode = _vert.data(),
             .BytecodeLength = _vert.size(),
         };
-
-        psoDesc.VS = vsByteCode;
 
         D3D12_SHADER_BYTECODE psByteCode = {
             .pShaderBytecode = _pixel.data(),
             .BytecodeLength = _pixel.size(),
         };
 
-        psoDesc.PS = psByteCode;
-
-        //D3D12_RASTERIZER_DESC rasterDesc = {
-        //    .FillMode = D3D12_FILL_MODE_SOLID,
-        //    .CullMode = D3D12_CULL_MODE_NONE,
-        //    .FrontCounterClockwise = FALSE,
-        //    .DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP,
-        //    .SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS,
-        //    .DepthClipEnable = TRUE,
-        //    .MultisampleEnable = FALSE,
-        //    .AntialiasedLineEnable = FALSE,
-        //    .ForcedSampleCount = 0,
-        //    .ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF,
-        //};
-
-        //psoDesc.RasterizerState = rasterDesc;
-
-        psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-
-        /*D3D12_BLEND_DESC blendDesc;
-        blendDesc.AlphaToCoverageEnable = FALSE;
-        blendDesc.IndependentBlendEnable = FALSE;
-
-        const D3D12_RENDER_TARGET_BLEND_DESC defaultRenderTargetBlendDesc =
-        {
-            .BlendEnable = FALSE,
-            .LogicOpEnable = FALSE,
-            .SrcBlend = D3D12_BLEND_ONE,
-            .DestBlend = D3D12_BLEND_ZERO,
-            .BlendOp = D3D12_BLEND_OP_ADD,
-            .SrcBlendAlpha = D3D12_BLEND_ONE,
-            .DestBlendAlpha = D3D12_BLEND_ZERO,
-            .BlendOpAlpha = D3D12_BLEND_OP_ADD,
-            .LogicOp = D3D12_LOGIC_OP_NOOP,
-            .RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL,
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {
+            .pRootSignature = _dxRootSignature.Get(),
+            .VS = vsByteCode,
+            .PS = psByteCode,
+            .DS = 0,
+            .HS = 0,
+            .GS = 0,
+            .StreamOutput = 0,
+            .BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT),
+            .SampleMask = UINT_MAX,
+            .RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT),
+            .DepthStencilState = {
+                .DepthEnable = FALSE,
+                .DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO,
+                .DepthFunc = D3D12_COMPARISON_FUNC_NEVER,
+                .StencilEnable = FALSE,
+                .StencilReadMask = 0,
+                .StencilWriteMask = 0,
+                .FrontFace = {
+                    .StencilFailOp = D3D12_STENCIL_OP_KEEP,
+                    .StencilDepthFailOp = D3D12_STENCIL_OP_KEEP,
+                    .StencilPassOp = D3D12_STENCIL_OP_KEEP,
+                    .StencilFunc = D3D12_COMPARISON_FUNC_NEVER,
+                },
+                .BackFace = {
+                    .StencilFailOp = D3D12_STENCIL_OP_KEEP,
+                    .StencilDepthFailOp = D3D12_STENCIL_OP_KEEP,
+                    .StencilPassOp = D3D12_STENCIL_OP_KEEP,
+                    .StencilFunc = D3D12_COMPARISON_FUNC_NEVER,
+                },
+            },
+            .InputLayout = {
+                .pInputElementDescs = inputElementDescs,
+                .NumElements = _countof(inputElementDescs),
+            },
+            .IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED,
+            .PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
+            .NumRenderTargets = 1,
+            .RTVFormats = DXGI_FORMAT_R8G8B8A8_UNORM,
+            .DSVFormat = DXGI_FORMAT_UNKNOWN,
+            .SampleDesc = {
+                .Count = 1,
+                .Quality = 0,
+            },
+            .NodeMask = 0,
+            .CachedPSO = 0,
+            .Flags = D3D12_PIPELINE_STATE_FLAG_NONE,
         };
-
-        for (UINT i = 0; i < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT; ++i)
-            blendDesc.RenderTarget[i] = defaultRenderTargetBlendDesc;
-
-        psoDesc.BlendState = blendDesc;*/
-        psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-        psoDesc.DepthStencilState.DepthEnable = FALSE;
-        psoDesc.DepthStencilState.StencilEnable = FALSE;
-        psoDesc.SampleMask = UINT_MAX;
-        psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-        psoDesc.NumRenderTargets = 1;
-        psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-        psoDesc.SampleDesc.Count = 1;
 
         hResult = _dxDevice->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&_dxPipelineState));
         if (FAILED(hResult)) {
@@ -749,21 +730,22 @@ public:
             throw fmt::windows_error(hResult, "CreateCommittedResource() Failed");
         }
 
-        // Copy the triangle data to the vertex buffer.
-        uint8_t* pVertexDataBegin;
-
         // We do not intend to read from this resource on the CPU.
         D3D12_RANGE vertexReadRange = {
             .Begin = 0,
             .End = 0,
         };
 
-        hResult = _dxVertexBuffer->Map(0, &vertexReadRange, reinterpret_cast<void**>(&pVertexDataBegin));
+        // Copy the triangle data to the vertex buffer.
+        uint8_t* ptr = nullptr;
+
+        hResult = _dxVertexBuffer->Map(0, &vertexReadRange, reinterpret_cast<void**>(&ptr));
         if (FAILED(hResult)) {
             throw fmt::windows_error(hResult, "Map() Failed");
         }
 
-        memcpy(pVertexDataBegin, vertexBufferData, sizeof(vertexBufferData));
+        memcpy(ptr, vertexBufferData, sizeof(vertexBufferData));
+
         _dxVertexBuffer->Unmap(0, nullptr);
 
         _dxVertexBufferView.BufferLocation = _dxVertexBuffer->GetGPUVirtualAddress();
@@ -790,7 +772,7 @@ public:
         WaitForPreviousFrame();
     }
 
-    void InitIndexBuffer()
+    /*void InitIndexBuffer()
     {
         HRESULT hResult;
 
@@ -849,14 +831,15 @@ public:
         }
 
         memcpy(pIndexDataBegin, indexBufferData, sizeof(indexBufferData));
+
         dxIndexBuffer->Unmap(0, nullptr);
 
         _dxIndexBufferView.BufferLocation = dxIndexBuffer->GetGPUVirtualAddress();
         _dxIndexBufferView.Format = DXGI_FORMAT_R32_UINT;
         _dxIndexBufferView.SizeInBytes = indexBufferSize;
-    }
+    }*/
 
-    void InitUniformBuffer()
+    /*void InitUniformBuffer()
     {
         HRESULT hResult;
 
@@ -933,14 +916,17 @@ public:
             .End = 0,
         };
 
-        hResult = _dxUniformBuffer->Map(0, &uniformReadRange, reinterpret_cast<void**>(&_mappedUniformBuffer));
+        uint8_t* ptr = nullptr;
+
+        hResult = _dxUniformBuffer->Map(0, &uniformReadRange, reinterpret_cast<void**>(&ptr));
         if (FAILED(hResult)) {
             throw fmt::windows_error(hResult, "Map() Failed");
         }
 
-        memcpy(_mappedUniformBuffer, &uboVS, sizeof(uboVS));
+        memcpy(ptr, &uboVS, sizeof(uboVS));
+
         _dxUniformBuffer->Unmap(0, &uniformReadRange);
-    }
+    }*/
 
     void SetupCommands()
     {
@@ -961,17 +947,13 @@ public:
         _dxCommandList->RSSetScissorRects(1, &_dxSurfaceSize);
 
         // Indicate that the back buffer will be used as a render target.
-        D3D12_RESOURCE_BARRIER renderTargetBarrier;
-        renderTargetBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        renderTargetBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-        renderTargetBarrier.Transition.pResource = _dxRenderTargets[_frameIndex].Get();
-        renderTargetBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-        renderTargetBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-        renderTargetBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+        auto renderTargetBarrier = CD3DX12_RESOURCE_BARRIER::Transition(
+            _dxRenderTargets[_frameIndex].Get(), 
+            D3D12_RESOURCE_STATE_PRESENT, 
+            D3D12_RESOURCE_STATE_RENDER_TARGET
+        );
 
         _dxCommandList->ResourceBarrier(1, &renderTargetBarrier);
-
-        //_dxCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(_dxRenderTargets[_frameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
 
         CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(_dxRtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), _frameIndex, _rtvDescriptorHeapSize);
         _dxCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
@@ -985,17 +967,13 @@ public:
 
         //_dxCommandList->DrawIndexedInstanced(3, 1, 0, 0, 0);
 
-        D3D12_RESOURCE_BARRIER presentBarrier;
-        presentBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        presentBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-        presentBarrier.Transition.pResource = _dxRenderTargets[_frameIndex].Get();
-        presentBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-        presentBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-        presentBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+        auto presentBarrier = CD3DX12_RESOURCE_BARRIER::Transition(
+            _dxRenderTargets[_frameIndex].Get(),
+            D3D12_RESOURCE_STATE_RENDER_TARGET,
+            D3D12_RESOURCE_STATE_PRESENT
+        );
 
         _dxCommandList->ResourceBarrier(1, &presentBarrier);
-
-        //_dxCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(_dxRenderTargets[_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 
         hResult = _dxCommandList->Close();
         if (FAILED(hResult)) {
@@ -1038,7 +1016,7 @@ public:
         // Debug
         hResult = _dxDevice->GetDeviceRemovedReason();
         if (FAILED(hResult)) {
-            throw fmt::windows_error(hResult, "OOF Device: ");
+            throw fmt::windows_error(hResult, "GetDeviceRemovedReason()");
         }
 
         // Present, then wait till finished to continue execution
@@ -1087,9 +1065,9 @@ void run()
 
     // These didn't happen?
 
-    app.InitIndexBuffer();
+    //app.InitIndexBuffer();
 
-    app.InitUniformBuffer();
+    //app.InitUniformBuffer();
 
 
     while (RUNNING)
