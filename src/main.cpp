@@ -38,25 +38,13 @@ using Microsoft::WRL::ComPtr;
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 
-// STL headers
-#include <thread>
-#include <chrono>
-using namespace std::chrono;
-
 #include <fmt/os.h>
-#include <fstream>
-#include <vector>
 
-#include <optional>
+// STL headers
+#include <vector>
+#include <fstream>
 
 bool RUNNING;
-
-struct
-{
-    glm::mat4 projectionMatrix;
-    glm::mat4 modelMatrix;
-    glm::mat4 viewMatrix;
-} uboVS;
 
 class App
 {
@@ -104,10 +92,6 @@ private:
 
     D3D12_VERTEX_BUFFER_VIEW _dxVertexBufferView = {};
 
-    //D3D12_INDEX_BUFFER_VIEW _dxIndexBufferView = {};
-
-    //ComPtr<ID3D12Resource> _dxUniformBuffer;
-
     ComPtr<ID3D12DescriptorHeap> _dxUniformBufferHeap;
 
     ComPtr<ID3D12PipelineState> _dxPipelineState;
@@ -136,13 +120,10 @@ public:
         }
 
         if (msg == WM_CREATE) {
-            // CREATESTRUCT is the data for the event WM_CREATE
             CREATESTRUCT* cs = (CREATESTRUCT*)lParam;
 
-            // Extract our applications pointer from lpCreateParams
             App* app = static_cast<App*>(cs->lpCreateParams);
 
-            // Set our app into userdata
             SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)app);
         }
 
@@ -152,7 +133,6 @@ public:
     LRESULT ProcessMessage(HWND hwnd, unsigned msg, WPARAM wParam, LPARAM lParam)
     {
         if (msg == WM_CLOSE) {
-            //std::terminate();
             RUNNING = false;
         }
 
@@ -185,7 +165,6 @@ public:
     {
         HINSTANCE instance = GetModuleHandle(nullptr);
 
-        // Register the window class
         const char* WINDOW_CLASS_NAME = "SampleWindowClass";
 
         DWORD dwStyle = CS_VREDRAW | CS_HREDRAW;
@@ -209,7 +188,6 @@ public:
             throw fmt::windows_error(GetLastError(), "RegisterClassEx() Failed");
         }
 
-        // Account for title bar
         RECT wr = { 0, 0, _windowSize.x, _windowSize.y };
         AdjustWindowRect(&wr, dwStyle, false);
 
@@ -239,7 +217,6 @@ public:
     {
         HRESULT hResult;
 
-        // Enable Debug Layer
         ComPtr<ID3D12Debug> dxDebug;
         hResult = D3D12GetDebugInterface(IID_PPV_ARGS(&dxDebug));
         if (FAILED(hResult)) {
@@ -253,7 +230,6 @@ public:
 
         _dxDebug->EnableDebugLayer();
         _dxDebug->SetEnableGPUBasedValidation(true);
-        //_dxDebug->SetEnableSynchronizedCommandQueueValidation(true);
     }
 
     void InitFactory()
@@ -262,20 +238,17 @@ public:
 
         int dxgiFactoryFlags = DXGI_CREATE_FACTORY_DEBUG;
 
-        // NOTE: This has a default flag
         hResult = CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&_dxFactory));
         if (FAILED(hResult)) {
             throw fmt::windows_error(hResult, "CreateDXGIFactory2() Failed");
         }
 
-        // Disable V-Sync
         int allowTearing = 0;
         hResult = _dxFactory->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &allowTearing, sizeof(allowTearing));
         if (FAILED(hResult)) {
             throw fmt::windows_error(hResult, "CheckFeatureSupport() Failed");
         }
 
-        // Disable ALT+ENTER
         hResult = _dxFactory->MakeWindowAssociation(_window, DXGI_MWA_NO_ALT_ENTER);
         if (FAILED(hResult)) {
             throw fmt::windows_error(hResult, "CheckFeatureSupport() Failed");
@@ -286,9 +259,7 @@ public:
     {
         DXGI_ADAPTER_DESC1 adapterDesc;
         adapter->GetDesc1(&adapterDesc);
-        wprintf(L"%s\n", adapterDesc.Description);
 
-        // Skip the basic Render driver adapter | WARP - Windows Advanced Rasterization Platform
         if (adapterDesc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) {
             fmt::print("oof. Software Renderer.\n");
             return false;
@@ -301,7 +272,6 @@ public:
     {
         HRESULT hResult;
 
-        // Enumerate adapter
         for (unsigned i = 0; ; ++i) {
             hResult = _dxFactory->EnumAdapterByGpuPreference(
                 i,
@@ -313,7 +283,6 @@ public:
                 break;
             }
 
-            // Create device if suitable
             if (IsDeviceSuitable(_dxAdapter.Get())) {
                 hResult = D3D12CreateDevice(
                     _dxAdapter.Get(),
@@ -326,20 +295,11 @@ public:
                     ComPtr<ID3D12InfoQueue> pInfoQueue;
                     if (SUCCEEDED(_dxDevice.As(&pInfoQueue)))
                     {
-                        //pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
-                        //pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
-                        //pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, TRUE);
-
-                        // Suppress whole categories of messages
-                        //D3D12_MESSAGE_CATEGORY Categories[] = {};
-
-                        // Suppress messages based on their severity level
                         D3D12_MESSAGE_SEVERITY Severities[] =
                         {
                             D3D12_MESSAGE_SEVERITY_INFO
                         };
 
-                        // Suppress individual messages by their ID
                         D3D12_MESSAGE_ID DenyIds[] = {
                             D3D12_MESSAGE_ID_CLEARRENDERTARGETVIEW_MISMATCHINGCLEARVALUE,   // I'm really not sure how to avoid this message.
                             D3D12_MESSAGE_ID_MAP_INVALID_NULLRANGE,                         // This warning occurs when using capture frame while graphics debugging.
@@ -347,8 +307,6 @@ public:
                         };
 
                         D3D12_INFO_QUEUE_FILTER NewFilter = {};
-                        //NewFilter.DenyList.NumCategories = _countof(Categories);
-                        //NewFilter.DenyList.pCategoryList = Categories;
                         NewFilter.DenyList.NumSeverities = _countof(Severities);
                         NewFilter.DenyList.pSeverityList = Severities;
                         NewFilter.DenyList.NumIDs = _countof(DenyIds);
@@ -379,7 +337,6 @@ public:
     {
         HRESULT hResult;
 
-        // Create commandQueueDesc
         D3D12_COMMAND_QUEUE_DESC commandQueueDesc = {
             .Type = D3D12_COMMAND_LIST_TYPE_DIRECT,
             .Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL,
@@ -387,7 +344,6 @@ public:
             .NodeMask = 0,
         };
 
-        // Make sure every Command queue tracks its own fence object and fence value, and only signals it's own fence object.
         hResult = _dxDevice->CreateCommandQueue(&commandQueueDesc, IID_PPV_ARGS(&_dxCommandQueue));
         if (FAILED(hResult)) {
             throw fmt::windows_error(hResult, "CreateCommandQueue() Failed");
@@ -398,11 +354,10 @@ public:
     {
         HRESULT hResult;
 
-        // Create Swapchain Desc
         DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {
             .Width = static_cast<UINT>(_windowSize.x),
             .Height = static_cast<UINT>(_windowSize.y),
-            .Format = DXGI_FORMAT_R8G8B8A8_UNORM, //DXGI_FORMAT_R8G8B8A8_UNORM_SRGB - this one fails when making the swapchain
+            .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
             .Stereo = false,
             .SampleDesc = {
                 .Count = 1,
@@ -413,11 +368,9 @@ public:
             .Scaling = DXGI_SCALING_STRETCH,
             .SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
             .AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED,
-            // This is part of where we allow tearing if tearing is supported - CheckTearingSupport() ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
             .Flags = 0,
         };
 
-        // Create Swapchain
         ComPtr<IDXGISwapChain1> dxSwapChain1;
         hResult = _dxFactory->CreateSwapChainForHwnd(
             _dxCommandQueue.Get(),
@@ -433,9 +386,7 @@ public:
 
         hResult = dxSwapChain1->QueryInterface(IID_PPV_ARGS(&_dxSwapChain));
         if (SUCCEEDED(hResult)) {
-            //dxSwapChain = static_cast<IDXGISwapChain3*>(dxSwapChain1.Get());
             dxSwapChain1.As<IDXGISwapChain3>(&_dxSwapChain);
-            //dxSwapChain1.Reset();
         }
 
         _frameIndex = _dxSwapChain->GetCurrentBackBufferIndex();
@@ -445,7 +396,6 @@ public:
     {
         HRESULT hResult;
 
-        // Create Descriptor Heap
         D3D12_DESCRIPTOR_HEAP_DESC desc = {
             .Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
             .NumDescriptors = _bufferCount,
@@ -458,7 +408,6 @@ public:
             throw fmt::windows_error(hResult, "CreateDescriptorHeap() Failed");
         }
 
-        // Create Render Target Views
         _rtvDescriptorHeapSize = _dxDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
         CD3DX12_CPU_DESCRIPTOR_HANDLE RtvHandle(_dxRtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
@@ -472,7 +421,6 @@ public:
 
             _dxDevice->CreateRenderTargetView(_dxRenderTargets[i].Get(), nullptr, RtvHandle);
 
-            //RtvHandle.ptr += (1 * _rtvDescriptorHeapSize);
             RtvHandle.Offset(1, _rtvDescriptorHeapSize);
         }
     }
@@ -491,36 +439,6 @@ public:
     {
         HRESULT hResult;
 
-        //D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData = {
-        //    .HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1
-        //};
-
-        //D3D12_DESCRIPTOR_RANGE1 ranges[1];
-        //ranges[0].BaseShaderRegister = 0;
-        //ranges[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-        //ranges[0].NumDescriptors = 1;
-        //ranges[0].RegisterSpace = 0;
-        //ranges[0].OffsetInDescriptorsFromTableStart = 0;
-        //ranges[0].Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE;
-
-        //D3D12_ROOT_PARAMETER1 rootParameters[1];
-        //rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-        //rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-
-        //rootParameters[0].DescriptorTable.NumDescriptorRanges = 1;
-        //rootParameters[0].DescriptorTable.pDescriptorRanges = ranges;
-
-        //D3D12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc = {
-        //    .Version = D3D_ROOT_SIGNATURE_VERSION_1_1,
-        //    .Desc_1_1 = {
-        //        .NumParameters = 1,
-        //        .pParameters = rootParameters,
-        //        .NumStaticSamplers = 0,
-        //        .pStaticSamplers = nullptr,
-        //        .Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT,
-        //    },
-        //};
-
         CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
         rootSignatureDesc.Init(0, nullptr, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
@@ -536,11 +454,6 @@ public:
         if (FAILED(hResult)) {
             throw fmt::windows_error(hResult, "CreateRootSignature() Failed");
         }
-
-        //if (signature) {
-        //    signature->Release();
-        //    signature = nullptr;
-        //}
     }
 
     std::vector<uint8_t> LoadFromFile(std::string filename)
@@ -572,12 +485,6 @@ public:
 
     void InitShaders()
     {
-        wchar_t* cwd = _wgetcwd(NULL, _MAX_PATH);
-
-        wprintf(L"%s\n", cwd);
-
-        free(cwd);
-
         _vert = LoadFromFile("../../resources/shader.vert.cso");
 
         _pixel = LoadFromFile("../../resources/shader.pixel.cso");
@@ -587,7 +494,6 @@ public:
     {
         HRESULT hResult;
 
-        // define the vertex input layout
         D3D12_INPUT_ELEMENT_DESC inputElementDescs[] = {
             { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
             { "COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
@@ -667,8 +573,6 @@ public:
             throw fmt::windows_error(hResult, "CreateCommandList() Failed");
         }
 
-        //_dxCommandList->SetName(L"Hello Triangle Command List");
-
         hResult = _dxCommandList->Close();
         if (FAILED(hResult)) {
             throw fmt::windows_error(hResult, "Close() Failed");
@@ -730,13 +634,11 @@ public:
             throw fmt::windows_error(hResult, "CreateCommittedResource() Failed");
         }
 
-        // We do not intend to read from this resource on the CPU.
         D3D12_RANGE vertexReadRange = {
             .Begin = 0,
             .End = 0,
         };
 
-        // Copy the triangle data to the vertex buffer.
         uint8_t* ptr = nullptr;
 
         hResult = _dxVertexBuffer->Map(0, &vertexReadRange, reinterpret_cast<void**>(&ptr));
@@ -772,162 +674,6 @@ public:
         WaitForPreviousFrame();
     }
 
-    /*void InitIndexBuffer()
-    {
-        HRESULT hResult;
-
-        uint32_t indexBufferData[3] = { 0, 1, 2 };
-
-        ComPtr<ID3D12Resource> dxIndexBuffer;
-
-        const unsigned int indexBufferSize = sizeof(indexBufferData);
-
-        D3D12_HEAP_PROPERTIES indexHeapProperties = {
-            .Type = D3D12_HEAP_TYPE_UPLOAD,
-            .CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
-            .MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
-            .CreationNodeMask = 1,
-            .VisibleNodeMask = 1,
-        };
-
-        D3D12_RESOURCE_DESC indexBufferResourceDesc = {
-            .Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
-            .Alignment = 0,
-            .Width = indexBufferSize,
-            .Height = 1,
-            .DepthOrArraySize = 1,
-            .MipLevels = 1,
-            .Format = DXGI_FORMAT_UNKNOWN,
-            .SampleDesc = {
-                .Count = 1,
-                .Quality = 0,
-            },
-            .Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
-            .Flags = D3D12_RESOURCE_FLAG_NONE,
-        };
-
-        hResult = _dxDevice->CreateCommittedResource(
-            &indexHeapProperties,
-            D3D12_HEAP_FLAG_NONE,
-            &indexBufferResourceDesc,
-            D3D12_RESOURCE_STATE_GENERIC_READ,
-            nullptr,
-            IID_PPV_ARGS(&dxIndexBuffer)
-        );
-        if (FAILED(hResult)) {
-            throw fmt::windows_error(hResult, "CreateCommittedResource() Failed");
-        }
-
-        uint8_t* pIndexDataBegin;
-
-        D3D12_RANGE indexReadRange = {
-            .Begin = 0,
-            .End = 0,
-        };
-
-        hResult = dxIndexBuffer->Map(0, &indexReadRange, reinterpret_cast<void**>(&pIndexDataBegin));
-        if (FAILED(hResult)) {
-            throw fmt::windows_error(hResult, "Map() Failed");
-        }
-
-        memcpy(pIndexDataBegin, indexBufferData, sizeof(indexBufferData));
-
-        dxIndexBuffer->Unmap(0, nullptr);
-
-        _dxIndexBufferView.BufferLocation = dxIndexBuffer->GetGPUVirtualAddress();
-        _dxIndexBufferView.Format = DXGI_FORMAT_R32_UINT;
-        _dxIndexBufferView.SizeInBytes = indexBufferSize;
-    }*/
-
-    /*void InitUniformBuffer()
-    {
-        HRESULT hResult;
-
-        uboVS.projectionMatrix = glm::perspective(45.0f, (float)_windowSize.x / (float)_windowSize.y, 0.01f, 1024.0f);
-
-        uboVS.viewMatrix = glm::translate(glm::identity<glm::mat4>(), glm::vec3(0.0f, 0.0f, 2.5f));
-
-        uboVS.modelMatrix = glm::identity<glm::mat4>();
-
-        D3D12_HEAP_PROPERTIES uniformHeapProperties = {
-            .Type = D3D12_HEAP_TYPE_UPLOAD,
-            .CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
-            .MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
-            .CreationNodeMask = 1,
-            .VisibleNodeMask = 1,
-        };
-
-        D3D12_DESCRIPTOR_HEAP_DESC uniformHeapDesc = {
-            .Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-            .NumDescriptors = 1,
-            .Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
-            .NodeMask = 0,
-        };
-
-        hResult = _dxDevice->CreateDescriptorHeap(&uniformHeapDesc, IID_PPV_ARGS(&_dxUniformBufferHeap));
-
-        if (FAILED(hResult)) {
-            throw fmt::windows_error(hResult, "CreateDescriptorHeap() Failed");
-        }
-
-        D3D12_RESOURCE_DESC uboResourceDesc = {
-            .Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
-            .Alignment = 0,
-            .Width = (sizeof(uboVS) + 255) & ~255,
-            .Height = 1,
-            .DepthOrArraySize = 1,
-            .MipLevels = 1,
-            .Format = DXGI_FORMAT_UNKNOWN,
-            .SampleDesc = {
-                .Count = 1,
-                .Quality = 0,
-            },
-            .Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
-            .Flags = D3D12_RESOURCE_FLAG_NONE,
-        };
-
-        hResult = _dxDevice->CreateCommittedResource(
-            &uniformHeapProperties,
-            D3D12_HEAP_FLAG_NONE,
-            &uboResourceDesc,
-            D3D12_RESOURCE_STATE_GENERIC_READ,
-            nullptr,
-            IID_PPV_ARGS(&_dxUniformBuffer)
-        );
-        if (FAILED(hResult)) {
-            throw fmt::windows_error(hResult, "CreateCommittedResource() Failed");
-        }
-
-        _dxUniformBufferHeap->SetName(L"Constant Buffer Upload Resource Heap");
-
-        D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {
-            .BufferLocation = _dxUniformBuffer->GetGPUVirtualAddress(),
-            .SizeInBytes = (sizeof(uboVS) + 255) & ~255 // CB size is required to be 256-byte aligned
-        };
-
-        D3D12_CPU_DESCRIPTOR_HANDLE cbvHandle(_dxUniformBufferHeap->GetCPUDescriptorHandleForHeapStart());
-        cbvHandle.ptr = cbvHandle.ptr + _dxDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 0;
-
-        _dxDevice->CreateConstantBufferView(&cbvDesc, cbvHandle);
-
-        // We do not intend to read from the resource on the CPU. (End is less than or equal to begin)
-        D3D12_RANGE uniformReadRange = {
-            .Begin = 0,
-            .End = 0,
-        };
-
-        uint8_t* ptr = nullptr;
-
-        hResult = _dxUniformBuffer->Map(0, &uniformReadRange, reinterpret_cast<void**>(&ptr));
-        if (FAILED(hResult)) {
-            throw fmt::windows_error(hResult, "Map() Failed");
-        }
-
-        memcpy(ptr, &uboVS, sizeof(uboVS));
-
-        _dxUniformBuffer->Unmap(0, &uniformReadRange);
-    }*/
-
     void SetupCommands()
     {
         HRESULT hResult;
@@ -946,7 +692,6 @@ public:
         _dxCommandList->RSSetViewports(1, &_dxViewport);
         _dxCommandList->RSSetScissorRects(1, &_dxSurfaceSize);
 
-        // Indicate that the back buffer will be used as a render target.
         auto renderTargetBarrier = CD3DX12_RESOURCE_BARRIER::Transition(
             _dxRenderTargets[_frameIndex].Get(), 
             D3D12_RESOURCE_STATE_PRESENT, 
@@ -962,10 +707,7 @@ public:
         _dxCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
         _dxCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         _dxCommandList->IASetVertexBuffers(0, 1, &_dxVertexBufferView);
-        //_dxCommandList->IASetIndexBuffer(&_dxIndexBufferView);
         _dxCommandList->DrawInstanced(3, 1, 0, 0);
-
-        //_dxCommandList->DrawIndexedInstanced(3, 1, 0, 0, 0);
 
         auto presentBarrier = CD3DX12_RESOURCE_BARRIER::Transition(
             _dxRenderTargets[_frameIndex].Get(),
@@ -1063,17 +805,9 @@ void run()
 
     app.InitFence();
 
-    // These didn't happen?
-
-    //app.InitIndexBuffer();
-
-    //app.InitUniformBuffer();
-
-
     while (RUNNING)
     {
         MSG msg;
-        //printf("hullo\n");
         if (GetMessage(&msg, NULL, 0, 0)) {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
@@ -1087,7 +821,6 @@ void run()
 
 int main(int argc, char ** argv)
 {
-    // Open Log File
     FILE* file = fopen("LastRun.log", "wt");
 
     RUNNING = true;
