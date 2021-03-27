@@ -821,7 +821,12 @@ void run()
 
 int main(int argc, char ** argv)
 {
+    printf("Argv[1]: %s", argv[1]);
+
+
     FILE* file = fopen("LastRun.log", "wt");
+
+    std::vector<FILE*> files;
 
     RUNNING = true;
 
