@@ -44,7 +44,7 @@ using Microsoft::WRL::ComPtr;
 #include <vector>
 #include <fstream>
 
-bool RUNNING;
+bool Running;
 
 class App
 {
@@ -133,7 +133,7 @@ public:
     LRESULT ProcessMessage(HWND hwnd, unsigned msg, WPARAM wParam, LPARAM lParam)
     {
         if (msg == WM_CLOSE) {
-            RUNNING = false;
+            Running = false;
         }
 
         return DefWindowProc(hwnd, msg, wParam, lParam);
@@ -805,7 +805,7 @@ void run()
 
     app.InitFence();
 
-    while (RUNNING)
+    while (Running)
     {
         MSG msg;
         if (GetMessage(&msg, NULL, 0, 0)) {
@@ -828,7 +828,7 @@ int main(int argc, char ** argv)
 
     std::vector<FILE*> files;
 
-    RUNNING = true;
+    Running = true;
 
     try {
         run();
