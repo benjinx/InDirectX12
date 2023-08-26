@@ -1,4 +1,9 @@
-build/
-.vscode
+# for clangd
+.cache/
+
+# dxc output files from hlsl
+*.cso
+
 .vs/
-dx12.cap
+.vscode/
+[Bb]uild/

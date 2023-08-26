@@ -1,72 +1,18 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.15 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.26 FATAL_ERROR)
 
-PROJECT(InDirectX)
+# Allow for custom cmake modules
+list(PREPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
-# https://github.com/microsoft/DirectXShaderCompiler for dxc
-# or in the vulkanSDK
-FIND_PROGRAM(
-    dxc_PROGRAM
-    NAMES dxc
-)
+project(InDirectX)
 
-FILE(
-    GLOB_RECURSE
-    _shaders_in
-    "resources/*.hlsl"
-)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
-SET(_shaders_out "")
+add_subdirectory(thirdparty)
 
-FOREACH(shader ${_shaders_in})
-    GET_FILENAME_COMPONENT(shader_path ${shader} PATH)
-    GET_FILENAME_COMPONENT(shader_wle ${shader} NAME_WLE)
+find_package(glm CONFIG REQUIRED)
+find_package(fmt CONFIG REQUIRED)
+find_package(directx-headers CONFIG REQUIRED)
 
-    SET(shader_vert_out "${shader_path}/${shader_wle}.vert.cso")
-    SET(shader_pixel_out "${shader_path}/${shader_wle}.pixel.cso")
-
-    ADD_CUSTOM_COMMAND(
-        DEPENDS ${shader}
-        COMMAND ${dxc_PROGRAM} -Fo ${shader_vert_out} -T vs_6_0 -E "VSMain" ${shader}
-        COMMAND ${dxc_PROGRAM} -Fo ${shader_pixel_out} -T ps_6_0 -E "PSMain" ${shader}
-        OUTPUT ${shader_vert_out} ${shader_pixel_out}
-    )
-
-    LIST(APPEND _shaders_out ${shader_vert_out} ${shader_pixel_out})
-    #MESSAGE(STATUS "${_shaders_out}")
-ENDFOREACH()
-
-FILE(
-    GLOB_RECURSE
-    _source
-    "src/*.h"
-    "src/*.cc"
-    "src/*.hpp"
-    "src/*.cpp"
-)
-
-ADD_EXECUTABLE(
-    ${PROJECT_NAME}
-    ${_source}
-    ${_shaders_in}
-    ${_shaders_out}
-)
-
-TARGET_LINK_LIBRARIES(
-    ${PROJECT_NAME}
-    PRIVATE
-        d3d12.lib
-        dxgi.lib
-        dxcompiler.lib
-)
-
-TARGET_INCLUDE_DIRECTORIES(
-    ${PROJECT_NAME}
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
-)
-
-TARGET_COMPILE_OPTIONS(
-    ${PROJECT_NAME}
-    PRIVATE
-        /std:c++latest
-)
+add_subdirectory(examples/HelloWindow)
+# add_subdirectory(examples/HelloTriangle)
