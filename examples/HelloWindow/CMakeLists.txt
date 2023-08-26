@@ -35,9 +35,3 @@ target_link_libraries(
         fmt::fmt
         Microsoft::DirectX-Headers
 )
-
-target_include_directories(
-    ${_example}
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
-)
