@@ -58,6 +58,8 @@ int main(int argc, char** argv)
 
     RECT windowRect = {0, 0, _windowSize.x, _windowSize.y};
 
+    // Accounts for the title bar and such
+    // We want the window to be the size we gave it, this makes sure it actually is
     AdjustWindowRect(&windowRect, dwStyle, false);
 
     const char* title = "HelloWindow";
@@ -84,6 +86,7 @@ int main(int argc, char** argv)
 
     ShowWindow(_window, SW_SHOWNORMAL);
 
+    // Sends 1 event through the loop, kickstarts it.
     UpdateWindow(_window);
 
     while (_running)
@@ -91,6 +94,8 @@ int main(int argc, char** argv)
         MSG msg;
         if (GetMessage(&msg, NULL, 0, 0)) {
             TranslateMessage(&msg);
+
+            // This calls WndProc
             DispatchMessage(&msg);
         }
     }
