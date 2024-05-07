@@ -2,14 +2,19 @@
 // Core Windows Functionality
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
+// Provides AdjustWindowRect, CreateWindowEx, DefWindowProc, DispatchMessage, GetModuleHandle,
+// LoadCursor, LoadIcon, PeekMessage, RegisterClassEx, ShowWindow, TranslateMessage, UpdateWindow,
+// RECT, DWORD, HWND, HINSTANCE, WNDCLASSEX
 
 // Logging and Exception Handling
 #include <fmt/os.h>
+// Provides fmt::windows_error
 
 // Configure GLM for DirectX's coordinate system
 #define GLM_FORCE_LEFT_HANDED
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+// Provides glm::ivec2
 
 // Used to track when the window should close
 bool _running = true;
@@ -120,12 +125,6 @@ void InitWindow()
     UpdateWindow(_window);
 }
 
-void CleanupWindow()
-{
-    DestroyWindow(_window);
-    _window = nullptr;
-}
-
 void Init()
 {
     InitWindow();
@@ -133,7 +132,8 @@ void Init()
 
 void Cleanup()
 {
-    CleanupWindow();
+    DestroyWindow(_window);
+    _window = nullptr;
 }
 
 void Update()

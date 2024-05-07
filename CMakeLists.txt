@@ -40,4 +40,4 @@ FetchContent_MakeAvailable(glm fmt directx-headers)
 ###
 
 add_subdirectory(examples/HelloWindow)
-# add_subdirectory(examples/HelloTriangle)
+add_subdirectory(examples/HelloTriangle)

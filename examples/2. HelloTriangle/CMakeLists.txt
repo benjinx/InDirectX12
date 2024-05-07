@@ -1,7 +1,5 @@
 
-include(CompileShaderList)
-
-set(_example HelloWindow)
+set(_example HelloTriangle)
 
 file(
     GLOB_RECURSE
@@ -16,6 +14,8 @@ file(
     _shader_source_list
     "*.hlsl"
 )
+
+include(CompileShaderList)
 
 compile_shader_list("${_shader_source_list}" _shader_list)
 
